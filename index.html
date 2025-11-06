@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Aspect Ratio & Cropping Assistant</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font: 16px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu,
+          Cantarell, Noto Sans, Helvetica, Arial, "Apple Color Emoji",
+          "Segoe UI Emoji";
+        background: canvas;
+        color: canvastext;
+      }
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        backdrop-filter: blur(8px);
+        background: color-mix(in srgb, canvas 85%, transparent);
+        border-bottom: 1px solid color-mix(in srgb, canvastext 12%, transparent);
+      }
+      .wrap {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 16px;
+      }
+      h1 {
+        font-size: clamp(1.4rem, 2.4vw + 0.6rem, 2.2rem);
+        margin: 4px 0 10px;
+      }
+      p.lead {
+        margin: 0 0 12px;
+        opacity: 0.8;
+      }
+
+      .grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: 1fr;
+      }
+      @media (min-width: 880px) {
+        .grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
+      section,
+      .card {
+        border: 1px solid color-mix(in srgb, canvastext 12%, transparent);
+        border-radius: 14px;
+        padding: 14px;
+        background: color-mix(in srgb, canvas 92%, transparent);
+      }
+
+      label {
+        display: block;
+        font-weight: 600;
+        margin: 8px 0 6px;
+      }
+      input[type="number"],
+      input[type="text"],
+      input[type="file"] {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid color-mix(in srgb, canvastext 18%, transparent);
+        background: canvas;
+        color: canvastext;
+      }
+      input[type="number"] {
+        appearance: textfield;
+      }
+      input[type="number"]::-webkit-outer-spin-button,
+      input[type="number"]::-webkit-inner-spin-button {
+        appearance: none;
+        margin: 0;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .hint {
+        font-size: 0.9rem;
+        opacity: 0.8;
+      }
+      .error {
+        color: #c22;
+        font-weight: 600;
+      }
+
+      .calc-output,
+      .img-output {
+        padding: 10px;
+        border-radius: 10px;
+        background: color-mix(in srgb, canvas 88%, transparent);
+      }
+      .preview {
+        display: grid;
+        grid-template-columns: 120px 1fr;
+        gap: 12px;
+        align-items: start;
+      }
+      .preview img {
+        width: 120px;
+        height: 80px;
+        object-fit: cover;
+        border-radius: 10px;
+        border: 1px solid color-mix(in srgb, canvastext 18%, transparent);
+      }
+      .dim-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: color-mix(in srgb, canvastext 10%, transparent);
+        font-variant-numeric: tabular-nums;
+      }
+
+      details.platform {
+        border: 1px solid color-mix(in srgb, canvastext 12%, transparent);
+        border-radius: 12px;
+        padding: 8px 10px;
+        background: canvas;
+      }
+      details.platform + details.platform {
+        margin-top: 10px;
+      }
+      details.platform > summary {
+        cursor: pointer;
+        font-weight: 700;
+        padding: 6px;
+        border-radius: 8px;
+        outline-offset: 4px;
+      }
+      .ratio-list {
+        display: grid;
+        gap: 10px;
+        margin-top: 8px;
+      }
+      .ratio-item {
+        padding: 10px;
+        border-radius: 10px;
+        background: color-mix(in srgb, canvas 92%, transparent);
+        border: 1px solid color-mix(in srgb, canvastext 10%, transparent);
+        display: grid;
+        gap: 6px;
+      }
+      .ratio-title {
+        font-weight: 700;
+      }
+      .result-line {
+        font-variant-numeric: tabular-nums;
+      }
+      .options {
+        opacity: 0.85;
+        font-size: 0.92rem;
+      }
+
+      .sr-only {
+        position: absolute;
+        inset: auto auto auto -9999px;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="wrap">
+        <h1>Aspect Ratio & Cropping Assistant</h1>
+        <p class="lead">
+          Type dimensions or load an image to get a simplified ratio and exact
+          crop suggestions for Instagram, TikTok, YouTube, Substack, Pinterest,
+          X/Twitter, and LinkedIn.
+        </p>
+      </div>
+    </header>
+
+    <main class="wrap" id="app">
+      <div class="grid" role="region" aria-label="calculator and analyzer">
+        <section aria-labelledby="calc-h">
+          <h2 id="calc-h">1) Aspect Ratio Calculator</h2>
+          <div class="row">
+            <div>
+              <label for="w">Width (px)</label>
+              <input
+                id="w"
+                type="number"
+                inputmode="numeric"
+                min="1"
+                placeholder="e.g. 1920"
+                required
+              />
+            </div>
+            <div>
+              <label for="h">Height (px)</label>
+              <input
+                id="h"
+                type="number"
+                inputmode="numeric"
+                min="1"
+                placeholder="e.g. 1080"
+                required
+              />
+            </div>
+          </div>
+          <p class="hint">
+            Enter positive integers. Updates happen in real time.
+          </p>
+          <div class="calc-output" aria-live="polite" id="calcOutput">
+            Waiting for dimensions…
+          </div>
+        </section>
+
+        <section aria-labelledby="img-h">
+          <h2 id="img-h">2) Image Analyzer (optional)</h2>
+          <label for="file">Pick an image</label>
+          <input id="file" type="file" accept="image/*" />
+          <div class="preview" id="preview" hidden>
+            <img id="thumb" alt="Selected image preview" />
+            <div>
+              <div><span class="dim-badge" id="naturalDims">—</span></div>
+              <p class="hint">
+                Natural size detected. Fields updated automatically.
+              </p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <section class="card" aria-labelledby="targets-h">
+        <h2 id="targets-h">Platform Targets & Crop Suggestions</h2>
+        <p class="hint">
+          Results update as you type. If a target already matches your image,
+          you’ll see a confirmation.
+        </p>
+        <div id="results" class="results" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <script>
+      (function () {
+        "use strict";
+        const $ = (sel) => document.querySelector(sel);
+
+        const platforms = [
+          {
+            name: "Instagram",
+            ratios: [
+              { label: "Post", disp: "1:1", w: 1, h: 1 },
+              { label: "Story", disp: "9:16", w: 9, h: 16 },
+              { label: "Reel", disp: "9:16", w: 9, h: 16 },
+              {
+                label: "Landscape",
+                disp: "1.91:1",
+                w: 1.91,
+                h: 1,
+                decimal: true,
+              },
+              { label: "Portrait", disp: "4:5", w: 4, h: 5 },
+            ],
+          },
+          {
+            name: "TikTok",
+            ratios: [{ label: "Video", disp: "9:16", w: 9, h: 16 }],
+          },
+          {
+            name: "YouTube",
+            ratios: [
+              { label: "Video", disp: "16:9", w: 16, h: 9 },
+              { label: "Shorts", disp: "9:16", w: 9, h: 16 },
+              { label: "Thumbnail", disp: "16:9", w: 16, h: 9 },
+            ],
+          },
+          {
+            name: "Substack",
+            ratios: [
+              { label: "Header", disp: "1.91:1", w: 1.91, h: 1, decimal: true },
+              { label: "In‑post", disp: "16:9", w: 16, h: 9 },
+              { label: "In‑post", disp: "4:3", w: 4, h: 3 },
+            ],
+          },
+          {
+            name: "Pinterest",
+            ratios: [
+              { label: "Pin", disp: "2:3", w: 2, h: 3 },
+              { label: "Square", disp: "1:1", w: 1, h: 1 },
+            ],
+          },
+          {
+            name: "X / Twitter",
+            ratios: [
+              { label: "Post", disp: "16:9", w: 16, h: 9 },
+              { label: "Post", disp: "1:1", w: 1, h: 1 },
+              { label: "Header", disp: "3:1", w: 3, h: 1 },
+            ],
+          },
+          {
+            name: "LinkedIn",
+            ratios: [
+              { label: "Post", disp: "1.91:1", w: 1.91, h: 1, decimal: true },
+              { label: "Post", disp: "1:1", w: 1, h: 1 },
+              {
+                label: "Article header",
+                disp: "1.91:1",
+                w: 1.91,
+                h: 1,
+                decimal: true,
+              },
+            ],
+          },
+        ];
+
+        const wEl = $("#w");
+        const hEl = $("#h");
+        const calcOut = $("#calcOutput");
+        const resWrap = $("#results");
+        const fileEl = $("#file");
+        const preview = $("#preview");
+        const thumb = $("#thumb");
+        const naturalDims = $("#naturalDims");
+
+        const gcd = (a, b) => {
+          a = Math.abs(a | 0);
+          b = Math.abs(b | 0);
+          if (!a || !b) return a || b || 1;
+          while (b) {
+            const t = b;
+            b = a % b;
+            a = t;
+          }
+          return a;
+        };
+        const simplify = (w, h) => {
+          const g = gcd(w, h);
+          return { w: w / g, h: h / g };
+        };
+
+        function formatCalc(w, h) {
+          if (
+            !Number.isInteger(w) ||
+            !Number.isInteger(h) ||
+            w <= 0 ||
+            h <= 0
+          ) {
+            return '<span class="error">Enter positive integers for width and height.</span>';
+          }
+          const s = simplify(w, h);
+          return `Original: <strong>${w}x${h}</strong> = <strong>${s.w}:${s.h}</strong>`;
+        }
+
+        function suggest(w, h, targetW, targetH, disp) {
+          if (
+            !Number.isInteger(w) ||
+            !Number.isInteger(h) ||
+            w <= 0 ||
+            h <= 0
+          ) {
+            return { line: "—", options: "" };
+          }
+          const s = simplify(w, h);
+          const origLineStart = `Original: ${w}x${h} = ${s.w}:${s.h}.`;
+          const r = targetW / targetH;
+          const origR = w / h;
+          const EPS = 1e-9;
+          if (Math.abs(origR - r) < EPS) {
+            return {
+              line: `${origLineStart} Image already matches target ratio`,
+              options: "",
+            };
+          }
+          let newW = w,
+            newH = h,
+            remove = 0,
+            dim = "";
+          if (origR > r) {
+            // too wide → reduce width
+            newW = Math.floor(h * r);
+            remove = w - newW;
+            dim = "width";
+          } else {
+            // too tall → reduce height
+            newH = Math.floor(w / r);
+            remove = h - newH;
+            dim = "height";
+          }
+          if (remove <= 0) {
+            return {
+              line: `${origLineStart} Image too small to crop to ${disp} without upscaling`,
+              options: "",
+            };
+          }
+          // alignment options
+          const half = Math.floor(remove / 2);
+          const other = remove - half;
+          const opts =
+            dim === "width"
+              ? `Options: crop ${remove}px from left; ${remove}px from right; or ${half}px left & ${other}px right (center).`
+              : `Options: crop ${remove}px from top; ${remove}px from bottom; or ${half}px top & ${other}px bottom (center).`;
+
+          const line = `${origLineStart} To achieve ${disp}, crop to ${newW}x${newH} (remove ${remove} pixels from ${dim})`;
+          return { line, options: opts };
+        }
+
+        function buildUI() {
+          resWrap.innerHTML = "";
+          platforms.forEach((p, i) => {
+            const det = document.createElement("details");
+            det.className = "platform";
+            if (i < 2) det.open = true; // open first ones by default
+            const sum = document.createElement("summary");
+            sum.textContent = p.name;
+            det.appendChild(sum);
+            const list = document.createElement("div");
+            list.className = "ratio-list";
+            p.ratios.forEach((ratio) => {
+              const item = document.createElement("div");
+              item.className = "ratio-item";
+              const title = document.createElement("div");
+              title.className = "ratio-title";
+              title.textContent = `${ratio.label} • ${ratio.disp}`;
+              const line = document.createElement("div");
+              line.className = "result-line";
+              const opt = document.createElement("div");
+              opt.className = "options";
+              item.append(title, line, opt);
+              list.appendChild(item);
+              ratio._elements = { lineEl: line, optEl: opt };
+            });
+            det.appendChild(list);
+            resWrap.appendChild(det);
+          });
+        }
+
+        function update() {
+          const w = parseInt(wEl.value, 10);
+          const h = parseInt(hEl.value, 10);
+          calcOut.innerHTML = formatCalc(w, h);
+          platforms.forEach((p) => {
+            p.ratios.forEach((ratio) => {
+              const tW = ratio.w,
+                tH = ratio.h;
+              const out = suggest(w, h, tW, tH, ratio.disp);
+              ratio._elements.lineEl.textContent = out.line;
+              ratio._elements.optEl.textContent = out.options;
+            });
+          });
+        }
+
+        // Image loader → auto-fill dims
+        fileEl.addEventListener("change", (e) => {
+          const f = e.target.files && e.target.files[0];
+          if (!f) return;
+          const url = URL.createObjectURL(f);
+          const img = new Image();
+          img.onload = () => {
+            wEl.value = img.naturalWidth;
+            hEl.value = img.naturalHeight;
+            thumb.src = url;
+            preview.hidden = false;
+            naturalDims.textContent = `${img.naturalWidth} × ${img.naturalHeight}`;
+            update();
+          };
+          img.src = url;
+        });
+
+        wEl.addEventListener("input", update);
+        hEl.addEventListener("input", update);
+
+        buildUI();
+        update();
+      })();
+    </script>
+  </body>
+</html>
